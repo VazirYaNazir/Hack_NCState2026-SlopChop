@@ -2,7 +2,7 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Colors } from "../theme/colors";
 import { HomeScreen } from "../screens/HomeScreen";
-import { ProfileScreen } from "../screens/ProfileScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 
 const Tab = createBottomTabNavigator();
 
