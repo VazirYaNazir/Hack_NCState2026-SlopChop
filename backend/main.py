@@ -13,6 +13,7 @@ from src.xapi import get_posts_from_trends_as_real_tweets as get_trending_posts
 from models import LocationData, PostData
 
 app = FastAPI()
+newsData = []
 
 # --- MIDDLEWARE ---
 app.add_middleware(
@@ -38,9 +39,11 @@ def get_feed():
 async def receive_location(loc: LocationData):
     print(f"RECEIVED COORDINATES: {loc.latitude}, {loc.longitude}")
     try:
-        post_info = get_trending_posts(coords_to_geo(loc.latitude, loc.longitude), 10, 1)
+        newsData = get_trending_posts(coords_to_geo(loc.latitude, loc.longitude), 10, 1)
     except Exception as e:
         print(f"Error occurred while fetching trending posts: {e}")
         return {"error": str(e)}
-    #Returns the list of trending posts in a LIST of JSONs format, similar to other api endpoints.
-    return post_info["posts"]
+    
+@app.get("/api/news")
+def get_news():
+    return newsData
