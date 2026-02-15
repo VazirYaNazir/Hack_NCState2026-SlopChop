@@ -1,18 +1,3 @@
-"""
-googleapi.py
-
-Country-level Google Trends (Trending now) via RSS.
-
-What this module provides
-- /trends/by-geo: fetch trends for a country code like "US", "GB", "IN"
-- /trends/by-coord: (US-only convenience) if coords are in the US, returns geo="US"
-  Otherwise returns a 400 telling the caller to pass geo manually.
-
-Notes
-- Google Trends "Trending now" supports exporting via RSS. :contentReference[oaicite:1]{index=1}
-- Country-level feeds are more consistently populated than state-level.
-"""
-
 from __future__ import annotations
 
 import time
@@ -134,21 +119,6 @@ def get_trends_by_geo(geo: str, limit: int = 20) -> Dict[str, Any]:
 
 
 def _coords_are_in_us(lat: float, lon: float) -> bool:
-    """
-    Best-effort check if a coordinate is in the US using the US Census Geocoder.
-
-    Args:
-        lat: Latitude.
-        lon: Longitude.
-
-    Returns:
-        True if Census returns a 'States' match, else False.
-
-    Notes:
-        This is US-only. If you need global reverse geocoding, either:
-        - pass geo from the client, or
-        - use a paid geocoding provider.
-    """
     url = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
     params = {
         "x": lon,
