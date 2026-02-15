@@ -231,12 +231,14 @@ def generate_analyzed_feed():
     """
     Fetches the mock feed and runs the AI engine on each post.
     """
-    feed = get_mock_feed()
-    _inject_hero_post(feed, "microsoft_support_team")
+    feed_data = get_mock_feed()
+    posts = feed_data["posts"]
+    
+    posts = _inject_hero_post(posts, "microsoft_support_team")
 
     analyzed_feed = []
     
-    for post in feed:
+    for post in posts:
         try:
             print(f"Processing post: {post['id']}...")
             
@@ -251,9 +253,10 @@ def generate_analyzed_feed():
             post['ai_image_probability'] = ai_prob
 
             # 4. Set Flags based on score
-            if (risk_score + ai_prob) / 2 > 75:
+            combined_score = (risk_score + (ai_prob * 100)) / 2
+            if combined_score > 75:
                 post['flag'] = "Likely AI/Scam"
-            elif risk_score > 40:
+            elif combined_score > 40:
                 post['flag'] = "Uncertain"
             else:
                 post['flag'] = "Likely Human"
@@ -267,26 +270,18 @@ def generate_analyzed_feed():
 
     return analyzed_feed
 
-def _inject_hero_post(feed_list, hero_id):
+def _inject_hero_post(posts_list, hero_id):
     """
     Shuffles the feed and places the 'hero' post randomly 
     in the top 3 positions (Index 0, 1, or 2).
     """
-    # 1. Find the hero
-    hero_post = next((item for item in feed_list if item["id"] == hero_id), None)
+    hero_post = next((item for item in posts_list if item["id"] == hero_id), None)
     
-    # 2. Get everyone else
-    others = [item for item in feed_list if item["id"] != hero_id]
+    others = [item for item in posts_list if item["id"] != hero_id]
     
-    # 3. Shuffle the rest
     random.shuffle(others)
     
-    # 4. Insert Hero randomly in the top 3 spots
     if hero_post:
-        # Pick a random number: 0, 1, or 2
-        # 0 = Very Top
-        # 1 = Second Post
-        # 2 = Third Post
         random_idx = random.randint(0, 2)
         insert_idx = min(random_idx, len(others))
         others.insert(insert_idx, hero_post)
