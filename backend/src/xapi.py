@@ -16,12 +16,42 @@ from dotenv import load_dotenv, find_dotenv
 _TWEET_CACHE: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
 _TWEET_CACHE_TTL_S = 20 * 60
 
-dotenv_path = find_dotenv(usecwd=True)
-if dotenv_path:
-    load_dotenv(dotenv_path, override=True)
-else:
-    ROOT = Path(__file__).resolve().parents[2]
-    load_dotenv(ROOT / ".env", override=True)
+
+def _load_environment() -> None:
+    """
+    Load env vars from the most likely project locations.
+
+    Why this exists:
+    - `find_dotenv(usecwd=True)` only searches current/parent directories.
+    - This module often runs from repo root, while credentials commonly live in
+      `backend/src/.env`.
+    - If we miss that file, `client_v2` becomes None and the feed is always empty.
+    """
+    candidates: List[Path] = []
+
+    cwd_dotenv = find_dotenv(usecwd=True)
+    if cwd_dotenv:
+        candidates.append(Path(cwd_dotenv))
+
+    this_file = Path(__file__).resolve()
+    candidates.extend(
+        [
+            this_file.parent / ".env",      # backend/src/.env
+            this_file.parents[1] / ".env",  # backend/.env
+            this_file.parents[2] / ".env",  # repo/.env
+        ]
+    )
+
+    seen: set[Path] = set()
+    for env_path in candidates:
+        if not env_path or env_path in seen:
+            continue
+        seen.add(env_path)
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+
+
+_load_environment()
 
 THIS_DIR = Path(__file__).resolve().parent
 PARENT_DIR = THIS_DIR.parent
@@ -32,10 +62,13 @@ from ai_engine import get_ai_image_probability, scan_post_caption
 
 TRENDS_RSS_URL = "https://trends.google.com/trending/rss"
 DEFAULT_UA = "HackNC-State2026/1.0 (contact: you@example.com)"
-HT_NS = "https://trends.google.com/trending/rss"
-NS = {"ht": HT_NS}
 
-X_BEARER = os.getenv("X_BEARER_TOKEN") or os.getenv("BEARER_TOKEN") or os.getenv("bear")
+X_BEARER = (
+    os.getenv("X_BEARER_TOKEN")
+    or os.getenv("TWITTER_BEARER_TOKEN")
+    or os.getenv("BEARER_TOKEN")
+    or os.getenv("bear")
+)
 
 client_v2 = tw.Client(bearer_token=X_BEARER, wait_on_rate_limit=True) if X_BEARER else None
 
@@ -49,9 +82,57 @@ def _obj_to_dict(o: Any) -> Dict[str, Any]:
         return {}
     if isinstance(o, dict):
         return o
+    if hasattr(o, "_asdict"):
+        try:
+            return dict(o._asdict())
+        except Exception:
+            pass
     if hasattr(o, "data") and isinstance(getattr(o, "data"), dict):
         return o.data
+    if hasattr(o, "_data") and isinstance(getattr(o, "_data"), dict):
+        return o._data
+
+    # Tweepy v2 objects generally expose attributes directly (id, text, ...).
+    keys = (
+        "id",
+        "text",
+        "attachments",
+        "public_metrics",
+        "author_id",
+        "lang",
+        "username",
+        "url",
+        "preview_image_url",
+        "type",
+        "media_key",
+    )
+    out = {k: getattr(o, k) for k in keys if hasattr(o, k) and getattr(o, k) is not None}
+    if out:
+        return out
     return {}
+
+
+def _local_name(tag: str) -> str:
+    """Return XML element local name, stripping namespace if present."""
+    return tag.rsplit("}", 1)[-1] if tag else ""
+
+
+def _first_child_by_local_name(parent: ET.Element, name: str) -> Optional[ET.Element]:
+    for child in list(parent):
+        if _local_name(child.tag) == name:
+            return child
+    return None
+
+
+def _children_by_local_name(parent: ET.Element, name: str) -> List[ET.Element]:
+    return [child for child in list(parent) if _local_name(child.tag) == name]
+
+
+def _child_text_by_local_name(parent: ET.Element, name: str) -> Optional[str]:
+    child = _first_child_by_local_name(parent, name)
+    if child is None or child.text is None:
+        return None
+    return child.text
 
 
 def _is_probably_english(s: str) -> bool:
@@ -106,6 +187,7 @@ def _scan_caption(caption: str) -> Tuple[int, str]:
     _CAPTION_SCAN_CACHE[caption] = out
     return out
 
+
 def get_google_trend_topics(geo: str = "US", limit: int = 10) -> Dict[str, Any]:
     """
     Fetch Google Trends RSS and return titles (topics) in your preferred style.
@@ -124,19 +206,26 @@ def get_google_trend_topics(geo: str = "US", limit: int = 10) -> Dict[str, Any]:
     r.raise_for_status()
 
     root = ET.fromstring(r.text)
-    channel = root.find("channel")
+    channel = _first_child_by_local_name(root, "channel")
 
     updated = None
     if channel is not None:
-        updated = (channel.findtext("lastBuildDate") or channel.findtext("pubDate") or None)
+        updated = (
+            _child_text_by_local_name(channel, "lastBuildDate")
+            or _child_text_by_local_name(channel, "pubDate")
+            or None
+        )
         if updated:
             updated = updated.strip()
 
     trends: List[Dict[str, Any]] = []
-    for item in root.findall("./channel/item"):
-        title = (item.findtext("title") or "").strip()
-        link = (item.findtext("link") or "").strip()
-        published = (item.findtext("pubDate") or "").strip() or None
+    if channel is None:
+        return {"geo": geo.upper().strip(), "updated": updated, "count": 0, "trends": trends}
+
+    for item in _children_by_local_name(channel, "item"):
+        title = (_child_text_by_local_name(item, "title") or "").strip()
+        link = (_child_text_by_local_name(item, "link") or "").strip()
+        published = (_child_text_by_local_name(item, "pubDate") or "").strip() or None
 
         if not _is_probably_english(title):
             continue
@@ -146,6 +235,7 @@ def get_google_trend_topics(geo: str = "US", limit: int = 10) -> Dict[str, Any]:
             break
 
     return {"geo": geo.upper().strip(), "updated": updated, "count": len(trends), "trends": trends}
+
 
 def _topic_query_variants(topic: str) -> List[str]:
     """
@@ -208,7 +298,7 @@ def search_x_tweets_with_media(topic: str, per_topic: int = 2) -> List[Dict[str,
                 if cached and cached[1]:
                     return cached[1][:per_topic]
                 raise
-            except (tw.errors.Unauthorized, tw.errors.Forbidden) as e:
+            except (tw.errors.Unauthorized, tw.errors.Forbidden):
                 raise
             except Exception as e:
                 last_error = e
@@ -296,6 +386,7 @@ def search_x_tweets_with_media(topic: str, per_topic: int = 2) -> List[Dict[str,
 
     return []
 
+
 def get_posts_from_trends_as_real_tweets(
     geo: str = "US",
     trends_count: int = 10,
@@ -331,7 +422,6 @@ def get_posts_from_trends_as_real_tweets(
             ai_prob = _ai_prob_for_url(image_url)
             risk_score, flag = _scan_caption(caption)
 
-            
             risk_score = max(risk_score, int(round(ai_prob * 100)))
 
             posts.append(
