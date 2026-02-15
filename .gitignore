@@ -1,1 +1,2 @@
-backend/session-quackpromax
+__pycache__/
+*.pyc
