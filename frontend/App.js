@@ -15,7 +15,7 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(true);
   const [lightMode, setLightMode] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [blurLevel, setBlurLevel] = useState('none'); // 'none', 'likely_ai', 'uncertain', 'likely_human'
+  const [blurLevel, setBlurLevel] = useState('none');
   const [unblurredImages, setUnblurredImages] = useState(new Set());
 
   useEffect(() => {
@@ -44,7 +44,6 @@ export default function App() {
         accuracy: currentLocation.coords.accuracy,
       };
 
-      console.log('Got location:', locationData);
       setLocation(locationData);
 
       try {
@@ -69,7 +68,6 @@ export default function App() {
         const response = await axios.get(`${API_URL}/api/feed`, {
           timeout: 50000
         });
-        console.log('Demo feed loaded:', response.data);
         setPosts(response.data || []);
       } else {
         console.log('Loading real news...');
@@ -100,7 +98,6 @@ export default function App() {
     
     if (blurLevel === 'likely_ai' && probPercent >= 70) return true;
     if (blurLevel === 'uncertain' && probPercent >= 40) return true;
-    if (blurLevel === 'likely_human' && probPercent >= 20) return true;
     
     return false;
   };
@@ -238,16 +235,6 @@ export default function App() {
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.optionRow}
-              onPress={() => setBlurLevel('likely_human')}
-            >
-              <View style={styles.radio}>
-                {blurLevel === 'likely_human' && <View style={styles.radioSelected} />}
-              </View>
-              <Text style={[styles.optionText, { color: theme.text }]}>Likely Human (20%+)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
               style={styles.closeButton}
               onPress={() => setSettingsVisible(false)}
             >
@@ -273,9 +260,9 @@ export default function App() {
                 <Text style={[styles.username, { color: theme.text }]}>@{post.username}</Text>
                 <View style={[
                   styles.flagBadge,
-                  post.flag === 'SCAM DETECTED' && styles.flagScam,
-                  post.flag === 'Suspicious' && styles.flagSuspicious,
-                  post.flag === 'Safe' && styles.flagSafe,
+                  post.flag === 'Likely AI/Scam' && styles.flagScam,
+                  post.flag === 'Uncertain' && styles.flagSuspicious,
+                  post.flag === 'Likely Human' && styles.flagSafe,
                   post.flag === 'Pending' && styles.flagPending,
                 ]}>
                   <Text style={styles.flagText}>{post.flag}</Text>
@@ -321,7 +308,7 @@ export default function App() {
 
               {post.ai_image_probability > 0 && (
                 <Text style={[styles.aiProb, { color: theme.subtext }]}>
-                  AI Probability: {(post.ai_image_probability * 100).toFixed(1)}%
+                  Probability that image is AI Generated: {(post.ai_image_probability * 100).toFixed(1)}%
                 </Text>
               )}
             </View>
