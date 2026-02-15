@@ -28,7 +28,7 @@ PARENT_DIR = THIS_DIR.parent
 if str(PARENT_DIR) not in sys.path:
     sys.path.insert(0, str(PARENT_DIR))
 
-from ai_engine import get_ai_image_probability, scan_post_caption  # type: ignore
+from ai_engine import get_ai_image_probability, scan_post_caption
 
 TRENDS_RSS_URL = "https://trends.google.com/trending/rss"
 DEFAULT_UA = "HackNC-State2026/1.0 (contact: you@example.com)"
