@@ -46,7 +46,7 @@ class ModelOutput(BaseModel):
 def scan_post_caption(input_data: str) -> int:
     total, weight_sum = 0, 0
     for info in loaded_models.values():
-        inputs = info["tokenizer"](text, return_tensors="pt", truncation=True, max_length=512)
+        inputs = info["tokenizer"](input_data, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             logits = info["model"](**inputs).logits
             if logits.shape[-1] == 2:
@@ -56,11 +56,3 @@ def scan_post_caption(input_data: str) -> int:
         total += ai_prob * info["weight"]
         weight_sum += info["weight"]
     return round(total / weight_sum, 1)
-        
-    # --- Hugging Face Code Ends Here ---
-    
-    return ModelOutput(
-        risk_score=min(score, 100), 
-        flags=detected_flags,
-        debug_info="Analyzed via Heuristic Engine v1"
-    )
