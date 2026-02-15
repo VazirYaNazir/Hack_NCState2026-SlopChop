@@ -39,7 +39,7 @@ def get_feed():
 async def receive_location(loc: LocationData):
     print(f"RECEIVED COORDINATES: {loc.latitude}, {loc.longitude}")
     try:
-        newsData = get_trending_posts(coords_to_geo(loc.latitude, loc.longitude), 10, 1)
+        newsData = get_trending_posts(coords_to_geo(loc.latitude, loc.longitude), 10, 1)["posts"]
     except Exception as e:
         print(f"Error occurred while fetching trending posts: {e}")
         return {"error": str(e)}
