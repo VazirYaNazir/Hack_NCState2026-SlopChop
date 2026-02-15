@@ -43,26 +43,19 @@ class ModelOutput(BaseModel):
     debug_info: Optional[str] = None
 
 # 3. Hugging Face Workspace
-def scan_post(input_data: ModelInput) -> ModelOutput:
-    """
-    Teammate: Implement your Hugging Face model here.
-    """
-    print(f"AI Scanning Post: {input_data.post_id}")
-    # Example:
-    # risk = my_hugging_face_model.predict(input_data.caption)
-    
-    # For now, keep the mock logic until hugging face is set up:
-    text = input_data.caption.lower()
-    score = 10
-    detected_flags = []
-    
-    if "giveaway" in text or "btc" in text:
-        score = 95
-        detected_flags.append("Crypto Scam")
-    
-    if "urgent" in text:
-        score += 20
-        detected_flags.append("Pressure Language")
+def scan_post_caption(input_data: str) -> int:
+    total, weight_sum = 0, 0
+    for info in loaded_models.values():
+        inputs = info["tokenizer"](text, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            logits = info["model"](**inputs).logits
+            if logits.shape[-1] == 2:
+                ai_prob = F.softmax(logits, dim=-1)[0][1].item() * 100
+            else:
+                ai_prob = torch.sigmoid(logits[0][0]).item() * 100
+        total += ai_prob * info["weight"]
+        weight_sum += info["weight"]
+    return round(total / weight_sum, 1)
         
     # --- Hugging Face Code Ends Here ---
     
