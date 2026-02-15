@@ -170,4 +170,9 @@ def trends_by_coord(
                "Use /trends/by-geo?geo=<COUNTRY_CODE> instead."
     )
 
+def coords_to_geo(lat:float, lon:float) -> str:
+    if _coords_are_in_us(lat, lon):
+        return "US"
+    raise ValueError("Coordinates appear to be outside the US (or could not be verified). Only US is supported in this demo.")
+
 print(get_trends_by_geo("US", limit=50))
