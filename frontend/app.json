@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "vyn",
+    "slug": "vyn",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#000000"
+      }
+    }
+  }
+}
