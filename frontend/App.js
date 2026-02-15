@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, ActivityIndicator, Dimensions, Text, Swit
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import axios from 'axios';
+import { BlurView } from 'expo-blur';
 
 const { width } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
@@ -14,6 +15,8 @@ export default function App() {
   const [demoMode, setDemoMode] = useState(true);
   const [lightMode, setLightMode] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [blurLevel, setBlurLevel] = useState('none'); // 'none', 'likely_ai', 'uncertain', 'likely_human'
+  const [unblurredImages, setUnblurredImages] = useState(new Set());
 
   useEffect(() => {
     getLocationAndLoadData();
@@ -89,6 +92,31 @@ export default function App() {
     setDemoMode(value);
   };
 
+  const shouldBlurImage = (postId, aiProb) => {
+    if (unblurredImages.has(postId)) return false;
+    if (blurLevel === 'none') return false;
+    
+    const probPercent = aiProb * 100;
+    
+    if (blurLevel === 'likely_ai' && probPercent >= 70) return true;
+    if (blurLevel === 'uncertain' && probPercent >= 40) return true;
+    if (blurLevel === 'likely_human' && probPercent >= 20) return true;
+    
+    return false;
+  };
+
+  const handleImagePress = (postId) => {
+    setUnblurredImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
   const getTheme = () => {
     if (lightMode) {
       return {
@@ -128,9 +156,10 @@ export default function App() {
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar style={lightMode ? "dark" : "light"} />
 
+      {/* Header with Title and Settings */}
       <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
         <Text style={[styles.appTitle, { color: theme.text }]}>
-          SlopChop
+          🔪 SlopChop
         </Text>
         <TouchableOpacity 
           onPress={() => setSettingsVisible(true)}
@@ -140,6 +169,7 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
+      {/* Demo Mode Toggle */}
       <View style={[styles.demoBar, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
         <Text style={[styles.demoText, { color: theme.text }]}>
           {demoMode ? 'Demo Feed' : 'Live News'}
@@ -152,6 +182,7 @@ export default function App() {
         />
       </View>
 
+      {/* Settings Modal */}
       <Modal
         visible={settingsVisible}
         animationType="slide"
@@ -162,6 +193,7 @@ export default function App() {
           <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
             
+            {/* Light Mode Toggle */}
             <View style={styles.settingRow}>
               <Text style={[styles.settingLabel, { color: theme.text }]}>Light Mode</Text>
               <Switch
@@ -171,6 +203,49 @@ export default function App() {
                 thumbColor={lightMode ? '#fff' : '#f4f3f4'}
               />
             </View>
+
+            {/* Blur Level Options */}
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Blur Images At:</Text>
+            
+            <TouchableOpacity 
+              style={styles.optionRow}
+              onPress={() => setBlurLevel('none')}
+            >
+              <View style={styles.radio}>
+                {blurLevel === 'none' && <View style={styles.radioSelected} />}
+              </View>
+              <Text style={[styles.optionText, { color: theme.text }]}>None</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.optionRow}
+              onPress={() => setBlurLevel('likely_ai')}
+            >
+              <View style={styles.radio}>
+                {blurLevel === 'likely_ai' && <View style={styles.radioSelected} />}
+              </View>
+              <Text style={[styles.optionText, { color: theme.text }]}>Likely AI (70%+)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.optionRow}
+              onPress={() => setBlurLevel('uncertain')}
+            >
+              <View style={styles.radio}>
+                {blurLevel === 'uncertain' && <View style={styles.radioSelected} />}
+              </View>
+              <Text style={[styles.optionText, { color: theme.text }]}>Uncertain (40%+)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.optionRow}
+              onPress={() => setBlurLevel('likely_human')}
+            >
+              <View style={styles.radio}>
+                {blurLevel === 'likely_human' && <View style={styles.radioSelected} />}
+              </View>
+              <Text style={[styles.optionText, { color: theme.text }]}>Likely Human (20%+)</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity 
               style={styles.closeButton}
@@ -207,12 +282,25 @@ export default function App() {
                 </View>
               </View>
               
+              {/* Post Image with Blur */}
               {post.image_url && (
-                <Image 
-                  source={{ uri: post.image_url }}
-                  style={styles.postImage}
-                  resizeMode="cover"
-                />
+                <TouchableOpacity 
+                  style={styles.imageContainer}
+                  onPress={() => handleImagePress(post.id)}
+                  activeOpacity={shouldBlurImage(post.id, post.ai_image_probability) ? 0.7 : 1}
+                >
+                  <Image 
+                    source={{ uri: post.image_url }}
+                    style={styles.postImage}
+                    resizeMode="cover"
+                  />
+                  {shouldBlurImage(post.id, post.ai_image_probability) && (
+                    <BlurView intensity={80} style={styles.blurOverlay}>
+                      <Text style={styles.blurText}>⚠️ Possible AI Content</Text>
+                      <Text style={styles.blurSubtext}>Tap to reveal</Text>
+                    </BlurView>
+                  )}
+                </TouchableOpacity>
               )}
               
               <Text style={[styles.caption, { color: theme.text }]}>
@@ -313,6 +401,36 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#0a84ff',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioSelected: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#0a84ff',
+  },
+  optionText: {
+    fontSize: 16,
+  },
   closeButton: {
     backgroundColor: '#0a84ff',
     borderRadius: 8,
@@ -379,10 +497,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
   },
+  imageContainer: {
+    width: '100%',
+    height: 300,
+    position: 'relative',
+  },
   postImage: {
     width: '100%',
     height: 300,
-    backgroundColor: '#2a2a2a',
+  },
+  blurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  blurText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  blurSubtext: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   caption: {
     fontSize: 14,

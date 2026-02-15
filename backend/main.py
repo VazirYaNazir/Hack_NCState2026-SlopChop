@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import ai_engine
 import feed_service
 from models import LocationData, PostData
-from googleapi import _coords_to_geo
 
 app = FastAPI()
 
@@ -29,4 +28,4 @@ def get_feed():
 async def receive_location(loc: LocationData):
     print(f"RECEIVED COORDINATES: {loc.latitude}, {loc.longitude}")
     # Here you can add logic to store the location or use it elsewhere.
-    return _coords_to_geo(loc.latitude, loc.longitude)
+    #return _coords_to_geo(loc.latitude, loc.longitude)
