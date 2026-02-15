@@ -24,8 +24,6 @@ async def root():
 def get_feed():
     return feed_service.generate_analyzed_feed()
     
-    
-
 @app.post("/api/submit-location")
 async def receive_location(loc: LocationData):
     print(f"RECEIVED COORDINATES: {loc.latitude}, {loc.longitude}")
