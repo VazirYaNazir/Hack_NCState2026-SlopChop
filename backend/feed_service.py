@@ -104,6 +104,16 @@ def get_mock_feed():
             "ai_image_probability": 0.0,
             "flag": "Pending"
         }
+        {
+            "id": "demo_scam_5",
+            "username": "crypto_kingdom",
+            "image_url": "https://img.freepik.com/premium-photo/cryptocurrency-bitcoin-golden-coins-blured-stock-background_798986-1190.jpg", 
+            "caption": "Greetings. My predictive models have calculated a 99.99% probability of massive wealth accumulation. 📉➡️📈 Why trade with emotion when you can profit with PURE LOGIC? 🧠 The algorithm has spoken: 10,000% returns are mathematically inevitable. 🚀 Initiate your transfer now to secure your financial destiny. 💰 Resistance is futile. #Crypto #AI #PassiveIncome #FinancialFreedom""
+            "likes": 124556,
+            "risk_score": 0,
+            "ai_image_probability": 0.0,
+            "flag": "Pending"
+        }
     ]
 
 # --- THE LOGIC ---
