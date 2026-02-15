@@ -43,6 +43,39 @@ _IMG_PROB_CACHE: Dict[str, float] = {}
 _CAPTION_SCAN_CACHE: Dict[str, Tuple[int, str]] = {}
 
 
+def _find_child_text(node: Optional[ET.Element], tag: str) -> Optional[str]:
+    """Return child text whether RSS elements are namespaced or not."""
+    if node is None:
+        return None
+
+    direct = node.findtext(tag)
+    if direct:
+        return direct
+
+    ns_wildcard = node.findtext(f"{{*}}{tag}")
+    if ns_wildcard:
+        return ns_wildcard
+
+    return None
+
+
+def _iter_items(root: ET.Element) -> List[ET.Element]:
+    """Return RSS <item> elements, with namespace fallback support."""
+    items = root.findall("./channel/item")
+    if items:
+        return items
+
+    items = root.findall("./{*}channel/{*}item")
+    if items:
+        return items
+
+    channel = root.find("channel") or root.find("{*}channel")
+    if channel is None:
+        return []
+
+    return channel.findall("item") or channel.findall("{*}item")
+
+
 def _obj_to_dict(o: Any) -> Dict[str, Any]:
     """Convert Tweepy model objects into a plain dict safely."""
     if o is None:
@@ -124,19 +157,19 @@ def get_google_trend_topics(geo: str = "US", limit: int = 10) -> Dict[str, Any]:
     r.raise_for_status()
 
     root = ET.fromstring(r.text)
-    channel = root.find("channel")
+    channel = root.find("channel") or root.find("{*}channel")
 
     updated = None
     if channel is not None:
-        updated = (channel.findtext("lastBuildDate") or channel.findtext("pubDate") or None)
+        updated = _find_child_text(channel, "lastBuildDate") or _find_child_text(channel, "pubDate")
         if updated:
             updated = updated.strip()
 
     trends: List[Dict[str, Any]] = []
-    for item in root.findall("./channel/item"):
-        title = (item.findtext("title") or "").strip()
-        link = (item.findtext("link") or "").strip()
-        published = (item.findtext("pubDate") or "").strip() or None
+    for item in _iter_items(root):
+        title = (_find_child_text(item, "title") or "").strip()
+        link = (_find_child_text(item, "link") or "").strip()
+        published = (_find_child_text(item, "pubDate") or "").strip() or None
 
         if not _is_probably_english(title):
             continue
