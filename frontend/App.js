@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, ActivityIndicator, Dimensions, Text, Switch, Image } from 'react-native';
+import { View, ScrollView, StyleSheet, ActivityIndicator, Dimensions, Text, Switch, Image, TouchableOpacity, Modal } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import axios from 'axios';
@@ -12,6 +12,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState(null);
   const [demoMode, setDemoMode] = useState(true);
+  const [lightMode, setLightMode] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   useEffect(() => {
     getLocationAndLoadData();
@@ -87,12 +89,35 @@ export default function App() {
     setDemoMode(value);
   };
 
+  const getTheme = () => {
+    if (lightMode) {
+      return {
+        bg: '#ffffff',
+        cardBg: '#f5f5f5',
+        text: '#000000',
+        subtext: '#666666',
+        border: '#e0e0e0',
+        headerBg: '#f9f9f9',
+      };
+    }
+    return {
+      bg: '#000000',
+      cardBg: '#1a1a1a',
+      text: '#ffffff',
+      subtext: '#888888',
+      border: '#2a2a2a',
+      headerBg: '#1a1a1a',
+    };
+  };
+
+  const theme = getTheme();
+
   if (loading) {
     return (
-      <View style={styles.centerContent}>
-        <StatusBar style="light" />
+      <View style={[styles.centerContent, { backgroundColor: theme.bg }]}>
+        <StatusBar style={lightMode ? "dark" : "light"} />
         <ActivityIndicator size="large" color="#0a84ff" />
-        <Text style={styles.loadingText}>
+        <Text style={[styles.loadingText, { color: theme.text }]}>
           {demoMode ? 'Analyzing demo posts...' : 'Loading news...'}
         </Text>
       </View>
@@ -100,11 +125,23 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar style={lightMode ? "dark" : "light"} />
 
-      <View style={styles.demoBar}>
-        <Text style={styles.demoText}>
+      <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
+        <Text style={[styles.appTitle, { color: theme.text }]}>
+          SlopChop
+        </Text>
+        <TouchableOpacity 
+          onPress={() => setSettingsVisible(true)}
+          style={styles.settingsButton}
+        >
+          <Text style={styles.settingsIcon}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={[styles.demoBar, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
+        <Text style={[styles.demoText, { color: theme.text }]}>
           {demoMode ? 'Demo Feed' : 'Live News'}
         </Text>
         <Switch
@@ -114,6 +151,36 @@ export default function App() {
           thumbColor={demoMode ? '#fff' : '#f4f3f4'}
         />
       </View>
+
+      <Modal
+        visible={settingsVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSettingsVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
+            
+            <View style={styles.settingRow}>
+              <Text style={[styles.settingLabel, { color: theme.text }]}>Light Mode</Text>
+              <Switch
+                value={lightMode}
+                onValueChange={setLightMode}
+                trackColor={{ false: '#3a3a3a', true: '#0a84ff' }}
+                thumbColor={lightMode ? '#fff' : '#f4f3f4'}
+              />
+            </View>
+
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setSettingsVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       
       <ScrollView 
         style={styles.scrollView}
@@ -122,13 +189,13 @@ export default function App() {
       >
         {posts.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No posts available</Text>
+            <Text style={[styles.emptyText, { color: theme.subtext }]}>No posts available</Text>
           </View>
         ) : (
           posts.map((post) => (
-            <View key={post.id} style={styles.postCard}>
+            <View key={post.id} style={[styles.postCard, { backgroundColor: theme.cardBg, borderColor: theme.border }]}>
               <View style={styles.postHeader}>
-                <Text style={styles.username}>@{post.username}</Text>
+                <Text style={[styles.username, { color: theme.text }]}>@{post.username}</Text>
                 <View style={[
                   styles.flagBadge,
                   post.flag === 'SCAM DETECTED' && styles.flagScam,
@@ -140,7 +207,6 @@ export default function App() {
                 </View>
               </View>
               
-              {/* Post Image */}
               {post.image_url && (
                 <Image 
                   source={{ uri: post.image_url }}
@@ -149,12 +215,12 @@ export default function App() {
                 />
               )}
               
-              <Text style={styles.caption}>
+              <Text style={[styles.caption, { color: theme.text }]}>
                 {post.caption}
               </Text>
               
               <View style={styles.postFooter}>
-                <Text style={styles.likes}>❤️ {post.likes?.toLocaleString()}</Text>
+                <Text style={[styles.likes, { color: theme.subtext }]}>❤️ {post.likes?.toLocaleString()}</Text>
                 <Text style={[
                   styles.riskScore,
                   post.risk_score > 75 && styles.riskHigh,
@@ -166,8 +232,8 @@ export default function App() {
               </View>
 
               {post.ai_image_probability > 0 && (
-                <Text style={styles.aiProb}>
-                  Probability that image is AI Generated: {(post.ai_image_probability * 100).toFixed(1)}%
+                <Text style={[styles.aiProb, { color: theme.subtext }]}>
+                  AI Probability: {(post.ai_image_probability * 100).toFixed(1)}%
                 </Text>
               )}
             </View>
@@ -181,45 +247,83 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   centerContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000',
   },
   loadingText: {
-    color: '#fff',
     marginTop: 10,
     fontSize: 14,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 50,
+    borderBottomWidth: 1,
+  },
+  appTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  settingsButton: {
+    padding: 8,
+  },
+  settingsIcon: {
+    fontSize: 24,
   },
   demoBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    marginTop: 50,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
   },
   demoText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  locationBar: {
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  locationText: {
-    color: '#0a84ff',
-    fontSize: 12,
+  modalContent: {
+    width: width - 64,
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  settingLabel: {
+    fontSize: 16,
+  },
+  closeButton: {
+    backgroundColor: '#0a84ff',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   scrollView: {
     flex: 1,
@@ -233,17 +337,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#666',
     fontSize: 16,
   },
   postCard: {
     width: width - 32,
     marginHorizontal: 16,
     marginVertical: 8,
-    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
     overflow: 'hidden',
   },
   postHeader: {
@@ -253,7 +354,6 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   username: {
-    color: '#fff',
     fontSize: 15,
     fontWeight: 'bold',
   },
@@ -285,7 +385,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2a2a2a',
   },
   caption: {
-    color: '#fff',
     fontSize: 14,
     lineHeight: 20,
     padding: 12,
@@ -298,7 +397,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   likes: {
-    color: '#888',
     fontSize: 13,
   },
   riskScore: {
@@ -315,7 +413,6 @@ const styles = StyleSheet.create({
     color: '#34c759',
   },
   aiProb: {
-    color: '#888',
     fontSize: 11,
     paddingHorizontal: 12,
     paddingBottom: 12,
