@@ -21,7 +21,7 @@ export default {
       ]
     },
     extra: {
-      apiUrl: process.env.EXPO_API_URL || "http://localhost:5000"
+      apiUrl: process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000"
     }
   }
 };

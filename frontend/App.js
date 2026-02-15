@@ -41,10 +41,14 @@ export default function App() {
       setLocation(locationData);
 
       try {
+        console.log('Sending location to:', `${API_URL}/api/location`);
+        console.log('Location data:', locationData);
+        
         const response = await axios.post(`${API_URL}/api/location`, locationData);
-        console.log('Backend response:', response.data);
+        console.log('Location sent! Backend response:', response.data);
       } catch (error) {
-        console.log('Could not send to backend:', error.message);
+        console.log('Location send error:', error.message);
+        console.log('Error details:', error.response?.data);
       }
 
       loadNews(locationData.latitude, locationData.longitude);
