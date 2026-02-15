@@ -4,6 +4,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipe
 from PIL import Image
 import torch
 import torch.nn.functional as F
+import requests
 from io import BytesIO
 
 image_detector = pipeline("image-classification", model="Organika/sdxl-detector")
@@ -40,10 +41,20 @@ def scan_post_caption(input_data: str) -> int:
     return round(total / weight_sum, 1)
 
 def get_ai_image_probability(img_url: str) -> float:
-    img = Image.open(BytesIO(response.content)).convert("RGB")
-    results = image_detector(img)
-
-    for r in results:
-        if r["label"].lower() in ["artificial", "ai", "generated"]:
-             return round(r["score"] * 100, 1)
-    return 0.0
+    try:
+        response = requests.get(img_url, timeout=10)
+        response.raise_for_status()
+        
+        img = Image.open(BytesIO(response.content)).convert("RGB")
+        
+        results = image_detector(img)
+        
+        for r in results:
+            if r["label"].lower() in ["artificial", "ai", "generated"]:
+                return round(r["score"], 4)
+        
+        return 0.0
+        
+    except Exception as e:
+        print(f"Error processing image {img_url}: {e}")
+        return 0.0

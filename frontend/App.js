@@ -60,14 +60,15 @@ export default function App() {
   const loadData = async (lat = null, lon = null) => {
     try {
       if (demoMode) {
-        console.log('🎭 Loading analyzed demo feed...');
+        console.log('Loading analyzed demo feed...');
         const response = await axios.get(`${API_URL}/api/feed`, {
-          timeout: 10000
+          timeout: 50000
         });
         console.log('Demo feed loaded:', response.data);
         setPosts(response.data || []);
       } else {
-        console.log('📍 Loading real news...');
+        console.log('Loading real news...');
+
         const response = await axios.get(`${API_URL}/api/news`, {
           params: { lat, lon },
           timeout: 10000
@@ -102,7 +103,6 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Demo Mode Toggle */}
       <View style={styles.demoBar}>
         <Text style={styles.demoText}>
           {demoMode ? 'Demo Feed' : 'Live News'}
@@ -127,7 +127,6 @@ export default function App() {
         ) : (
           posts.map((post) => (
             <View key={post.id} style={styles.postCard}>
-              {/* Post Header */}
               <View style={styles.postHeader}>
                 <Text style={styles.username}>@{post.username}</Text>
                 <View style={[
@@ -150,12 +149,10 @@ export default function App() {
                 />
               )}
               
-              {/* Caption */}
               <Text style={styles.caption}>
                 {post.caption}
               </Text>
               
-              {/* Footer with Likes and Risk Score */}
               <View style={styles.postFooter}>
                 <Text style={styles.likes}>❤️ {post.likes?.toLocaleString()}</Text>
                 <Text style={[
@@ -168,10 +165,9 @@ export default function App() {
                 </Text>
               </View>
 
-              {/* AI Image Analysis */}
               {post.ai_image_probability > 0 && (
                 <Text style={styles.aiProb}>
-                  AI Generated: {(post.ai_image_probability * 100).toFixed(1)}%
+                  Probability that image is AI Generated: {(post.ai_image_probability * 100).toFixed(1)}%
                 </Text>
               )}
             </View>
